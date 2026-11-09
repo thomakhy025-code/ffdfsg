@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Black Forest — Capture the Diamond</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%235ad0ff' d='M8 1l5 4-2 10H5L3 5z'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="boot-error" hidden></div>
+
+<section id="screen-title" class="screen">
+  <div class="title-card">
+    <p class="eyebrow">Titania · 5v5</p>
+    <h1>Black Forest</h1>
+    <p class="tag">Capture the Diamond</p>
+    <div class="diamond-hero" aria-hidden="true"></div>
+    <p class="lede">Steal the enemy Team Diamond, carry it to your castle’s Designated Vault, and hold it there for 10 seconds.</p>
+    <div id="account-box" class="account-box">
+      <p id="google-block" class="hint"></p>
+      <div id="google-button"></div>
+      <div class="row-btns" id="account-signed-out">
+        <button type="button" id="btn-google" class="ghost">Sign in with Google</button>
+        <button type="button" id="btn-browser" class="go">Sign in on this browser</button>
+      </div>
+      <div id="account-name" class="hidden">
+        <p class="hint">Choose a display name of at most 8 words. Longer names are rejected.</p>
+        <input id="display-name" maxlength="80" autocomplete="nickname" aria-label="Display name">
+        <p id="name-error" class="hint"></p>
+        <button type="button" id="btn-name" class="go">Save name</button>
+      </div>
+      <p id="account-hello" class="hint hidden"></p>
+    </div>
+    <div class="gender-row" role="group" aria-label="Body">
+      <button type="button" id="gender-male" class="gender">
+        <img src="boy-sheet.png" alt="Boy character sheet: front, side, and back" />
+        <strong>Male</strong>
+        <small>Front, side, back</small>
+      </button>
+      <button type="button" id="gender-female" class="gender">
+        <img src="girl-sheet.png" alt="Girl character sheet: front, side, and back" />
+        <strong>Female</strong>
+        <small>Front, side, back</small>
+      </button>
+    </div>
+    <button type="button" id="title-continue" class="go" disabled>Enter the armory</button>
+  </div>
+</section>
+
+<section id="screen-armory" class="screen hidden">
+  <header class="armory-top">
+    <div>
+      <p class="eyebrow">Crimson castle</p>
+      <h2>Armory</h2>
+    </div>
+    <div class="purse" id="purse"></div>
+  </header>
+  <div class="armory-grid">
+    <section class="panel">
+      <h3>Stat points</h3>
+      <p class="hint" id="points-left"></p>
+      <div id="stat-rows"></div>
+      <button type="button" id="btn-suggested" class="ghost">Suggested build</button>
+    </section>
+    <section class="panel">
+      <h3>Skills</h3>
+      <p class="hint">Unlock costs <strong>10 cards</strong> and <strong>10,000 coins</strong>. The first two unlocks are a starter waiver: cards are spent, your 10,000 coin purse is not. Testing deployment unlocks all six skills. Before the match you equip exactly three, and only those three can be cast.</p>
+      <div id="skill-cards"></div>
+    </section>
+    <section class="panel">
+      <h3>Draws</h3>
+      <p class="hint">Magic pool: Fireball, Ice Shadowing. Sword pool: Fire Sword, Lightning Quick Move. One draw is 5 cards, split at random across the pool. Premium is 1,000 diamonds = 10 draws = 50 cards.</p>
+      <p id="armory-status" class="status"></p>
+      <div class="row-btns">
+        <button type="button" id="btn-token" class="ghost">Spend a draw token</button>
+        <button type="button" id="btn-premium" class="ghost">Premium 10-draw</button>
+      </div>
+      <div id="pending-draw" class="pending hidden"></div>
+      <p class="hint weapon-note">You deploy with a sword (10 HP a swing). Bare hand is 5 HP — press <kbd>V</kbd> in the match. Carrying a diamond cuts move speed in half and seals attacks. Defense, beside Throw, halves incoming damage for 5 MP a second. Versus robots is the bot match. Play online searches for one other person and puts you on opposite teams, with robots in the other eight slots.</p>
+      <div class="row-btns">
+        <button type="button" id="btn-look" class="ghost">Change look</button>
+        <button type="button" id="btn-start" class="go">Versus robots</button>
+        <button type="button" id="btn-online" class="ghost">Play online</button>
+      </div>
+    </section>
+  </div>
+</section>
+
+<section id="screen-match" class="screen hidden">
+  <header class="hud-top">
+    <div class="vitals">
+      <div class="bar hp"><span id="hp-fill"></span><em id="hp-text">HP</em></div>
+      <div class="bar mp"><span id="mp-fill"></span><em id="mp-text">MP</em></div>
+    </div>
+    <div class="obj-block">
+      <strong id="hud-title">Black Forest</strong>
+      <span id="hud-obj"></span>
+    </div>
+    <div class="obj-block dim-block">
+      <span id="hud-diamond"></span>
+      <span id="hud-bank"></span>
+    </div>
+    <div class="obj-block score-block">
+      <span id="hud-score"></span>
+      <span id="hud-clock"></span>
+    </div>
+    <div class="hud-btns">
+      <button type="button" id="btn-help">Controls</button>
+      <button type="button" id="btn-restart">Restart match</button>
+    </div>
+  </header>
+  <div id="stage">
+    <canvas id="game" width="1280" height="720"></canvas>
+    <div id="stick" hidden aria-label="Move">
+      <div id="stick-knob"></div>
+    </div>
+    <div id="skill-cluster" hidden>
+      <div id="slots"></div>
+      <button type="button" id="btn-attack" aria-label="Attack">ATK</button>
+      <button type="button" id="btn-guard" hidden aria-label="Defense" aria-pressed="false">Defense</button>
+      <button type="button" id="btn-throw" hidden aria-label="Throw diamond">Throw</button>
+    </div>
+    <div id="kill-call" class="kill-call" hidden></div>
+    <div id="help" class="overlay hidden">
+      <div class="sheet">
+        <h2>Black Forest — how to win</h2>
+        <p>You are Crimson. Steal the Azure diamond and hold it in your <strong>Designated Vault</strong> for <strong>10 seconds</strong> to win. If a carrier dies, that diamond stays on the ground where they fell. Only Crimson can return the Crimson diamond: carry it into your vault and it snaps back to its cell at once, with no hold. Enemies can steal it again before that. Azure wins the same way with yours.</p>
+        <div class="cols">
+          <ul>
+            <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move. Right-click also walks. On a phone or tablet, drag the stick at the lower left. It sits in from the corner and moves you in any direction. Keys still win when they are held.</li>
+            <li>Swings follow movement, including Fire Sword. Stop and you keep that facing. <kbd>J</kbd>, left-click, or the Attack button.</li>
+            <li>Before the match, equip exactly three of the six skills. Only those three buttons appear, and only they can be cast. Press the number printed on the button.</li>
+            <li>Fireball flies along your facing, the same facing as a swing. A diamond throw follows that facing and lands 1m in front of you. Lightning dashes along that facing. Its strike is wide along the whole path. Anyone hit cannot move for 1 second, and can still cast Fireball. For 5 seconds their skill casts take twice as long.</li>
+            <li>Mega Explosion, key 5 when it is one of your three, channels for 2.5 seconds. You cannot move, attack, or use other skills. A pale red disk with a bold red ring marks a blast centered 7m ahead, radius 5m, so the near edge is 2m in front of you. It deals 200 HP to everyone inside, teammates included. It costs 70 MP. The 30s cooldown shortens with INT, the same way other cooldowns do.</li>
+            <li>Lightsaber Beam, key 6 when it is one of your three, channels for 1.5 seconds. You cannot move, attack, or use other skills. A pale yellow rectangle with a bold yellow border runs 7.5m straight ahead and is 2m wide. It deals 75 HP to everyone in that lane, teammates included. It costs 50 MP. The 24s cooldown shortens with INT, the same way other cooldowns do.</li>
+            <li>Sword is 0.5m, 120°, 10 HP. <kbd>V</kbd> bare hand, 5 HP.</li>
+            <li><kbd>1</kbd> Fireball <kbd>2</kbd> Ice Shadowing <kbd>3</kbd> Fire Sword <kbd>4</kbd> Lightning dash <kbd>5</kbd> Mega Explosion <kbd>6</kbd> Lightsaber Beam, when that skill is one of your three.</li>
+          </ul>
+          <ul>
+            <li>While you carry the diamond you cannot swing or cast, and you move at half speed. Defense appears beside Throw. Tap it to raise a shield that halves incoming damage and spends 5 MP each second. Tap again to drop it. It ends at 0 MP or when the diamond leaves you.</li>
+            <li><kbd>F</kbd>, right-click, or Throw (it appears beside your skills) throws the diamond along your facing. It lands 1m in front of you.</li>
+            <li><kbd>E</kbd> uses a catapult, ladder, spring, sewer, or tower hole, and repairs your gate.</li>
+            <li><kbd>Space</kbd> hops.</li>
+            <li>Every river can be walked at half move speed. A short zigzag river runs in front of each castle and stops before the north and south walls, so the gate stays dry. The center is a pond, wide through the middle and pinched into a bridge at the top and a bridge at the bottom. Islands sit in the water. Cross either bridge at full speed, or walk through the pond at half speed.</li>
+            <li>A round tower stands on each side of each bridge, four in all, with a 1m radius. Stand at its door for 3 seconds in a row to capture it for your team. Only that team can go inside. The tower has 200 HP. If enemies break it, it stays unusable for 20 seconds, then rebuilds neutral. Inside a tower your team holds, Fireball travels farther.</li>
+          </ul>
+        </div>
+        <button type="button" id="help-go" class="go">Got it</button>
+      </div>
+    </div>
+    <div id="result" class="overlay hidden">
+      <div class="sheet" id="result-sheet"></div>
+    </div>
+  </div>
+  <footer class="hud-bot">
+    <span id="weapon-label">Sword</span>
+    <span id="buff-label"></span>
+    <span id="carry-hint"></span>
+  </footer>
+</section>
+
+<div id="search-overlay" class="overlay hidden">
+  <div class="sheet">
+    <h2>Find an opponent</h2>
+    <p id="search-status">Searching for another player.</p>
+    <label class="hint" for="online-name">Name used in the match
+      <input id="online-name" maxlength="16" autocomplete="nickname">
+    </label>
+    <div class="row-btns">
+      <button type="button" id="search-cancel" class="ghost">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="loadout" class="overlay hidden">
+  <div class="sheet">
+    <h2>Testing loadout</h2>
+    <p>All six skills are unlocked. Equip exactly three. Only those three appear as buttons, and only they can be cast. Lightsaber Beam is the sixth.</p>
+    <div id="loadout-picks"></div>
+    <p id="loadout-count" class="hint"></p>
+    <div class="row-btns">
+      <button type="button" id="loadout-go" class="go" disabled>Deploy</button>
+      <button type="button" id="loadout-cancel" class="ghost">Back</button>
+    </div>
+  </div>
+</div>
+
+<div id="picker" class="overlay hidden">
+  <div class="sheet">
+    <h2 id="picker-title">Choose a pool</h2>
+    <p id="picker-body"></p>
+    <div class="row-btns">
+      <button type="button" id="pick-magic" class="go">Magic pool</button>
+      <button type="button" id="pick-sword" class="ghost">Sword pool</button>
+      <button type="button" id="pick-cancel" class="ghost">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="game.js?v=16"></script>
+</body>
+</html>
