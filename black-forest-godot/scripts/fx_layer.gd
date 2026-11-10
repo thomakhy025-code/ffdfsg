@@ -19,26 +19,54 @@ func _draw() -> void:
 		return
 	for f in sim.fires:
 		var a := clampf(float(f.t) / 5.0, 0.0, 1.0)
-		draw_circle(f.pos, float(f.r), Color(1.0, 0.42, 0.08, 0.45 * a))
-		draw_circle(f.pos, float(f.r) * 0.45, Color(1.0, 0.85, 0.45, 0.55 * a))
+		draw_circle(f.pos, float(f.r) * 1.15, Color(0.55, 0.08, 0.02, 0.28 * a))
+		draw_circle(f.pos, float(f.r), Color(1.0, 0.38, 0.05, 0.5 * a))
+		draw_circle(f.pos, float(f.r) * 0.45, Color(1.0, 0.86, 0.35, 0.75 * a))
+		draw_circle(f.pos, float(f.r) * 0.16, Color(1.0, 0.98, 0.85, 0.9 * a))
+	for s in sim.shots:
+		if s.kind == "fireball":
+			var tail := Vector2(s.vx, s.vy)
+			if tail.length_squared() > 0.01:
+				tail = tail.normalized()
+			draw_circle(s.pos - tail * 0.28, 0.22, Color(1.0, 0.35, 0.05, 0.35))
+			draw_circle(s.pos, 0.26, Color(1.0, 0.45, 0.08, 0.55))
+			draw_circle(s.pos, 0.14, Color(1.0, 0.95, 0.7, 0.95))
+		elif s.kind == "gem":
+			var gem: Vector2 = s.pos
+			draw_colored_polygon(PackedVector2Array([
+				gem + Vector2(0.0, -0.24),
+				gem + Vector2(0.16, 0.0),
+				gem + Vector2(0.0, 0.24),
+				gem + Vector2(-0.16, 0.0)
+			]), Color(0.72, 0.96, 1.0, 0.95))
 	for u in sim.units:
 		if u.channel == null:
 			continue
 		if u.channel.kind == "mega":
-			draw_circle(u.channel.pos, float(u.channel.r), Color(1.0, 0.25, 0.25, 0.16))
-			draw_arc(u.channel.pos, float(u.channel.r), 0.0, TAU, 40, Color(0.85, 0.05, 0.08, 0.95), 0.1, true)
+			var pulse := 0.92 + 0.08 * sin(float(sim.time) * 10.0)
+			draw_circle(u.channel.pos, float(u.channel.r) * pulse, Color(1.0, 0.22, 0.18, 0.2))
+			draw_circle(u.channel.pos, float(u.channel.r) * 0.45, Color(1.0, 0.55, 0.2, 0.18))
+			draw_arc(u.channel.pos, float(u.channel.r), 0.0, TAU, 48, Color(1.0, 0.25, 0.15, 0.95), 0.12, true)
+			draw_arc(u.channel.pos, float(u.channel.r) * 0.72, 0.0, TAU, 32, Color(1.0, 0.85, 0.45, 0.7), 0.05, true)
 		elif u.channel.kind == "saber":
 			var poly := _saber_poly(u.channel)
-			draw_colored_polygon(poly, Color(1.0, 0.92, 0.4, 0.22))
+			draw_colored_polygon(poly, Color(1.0, 0.92, 0.4, 0.28))
 			var loop := PackedVector2Array([poly[0], poly[1], poly[2], poly[3], poly[0]])
-			draw_polyline(loop, Color(0.95, 0.78, 0.05, 0.95), 0.08, true)
+			draw_polyline(loop, Color(1.0, 0.86, 0.15, 0.95), 0.1, true)
+			var mid_a := (poly[0] + poly[3]) * 0.5
+			var mid_b := (poly[1] + poly[2]) * 0.5
+			draw_line(mid_a, mid_b, Color(1.0, 1.0, 0.85, 0.9), 0.08, true)
 	for fx in sim.mega_fx:
 		var k := 1.0 - float(fx.t) / float(fx.dur)
-		draw_circle(fx.pos, float(fx.r) * (0.15 + 0.9 * k), Color(1.0, 0.45, 0.3, 0.28 * (1.0 - k)))
+		draw_circle(fx.pos, float(fx.r) * (0.15 + 0.9 * k), Color(1.0, 0.4, 0.15, 0.34 * (1.0 - k)))
+		draw_arc(fx.pos, float(fx.r) * (0.2 + 0.85 * k), 0.0, TAU, 36, Color(1.0, 0.9, 0.55, 0.8 * (1.0 - k)), 0.08, true)
 	for fx in sim.saber_fx:
 		var poly2 := _saber_poly(fx)
 		var a2 := clampf(float(fx.t) / float(fx.dur), 0.0, 1.0)
-		draw_colored_polygon(poly2, Color(1.0, 0.95, 0.7, 0.35 * a2))
+		draw_colored_polygon(poly2, Color(1.0, 0.95, 0.7, 0.4 * a2))
+		var core_a := (poly2[0] + poly2[3]) * 0.5
+		var core_b := (poly2[1] + poly2[2]) * 0.5
+		draw_line(core_a, core_b, Color(1.0, 1.0, 0.9, 0.85 * a2), 0.07, true)
 	for k in sim.keeps:
 		if float(k["cap"]) <= 0.0:
 			continue

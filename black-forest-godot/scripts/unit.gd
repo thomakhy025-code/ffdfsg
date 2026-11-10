@@ -4,18 +4,6 @@ extends CharacterBody2D
 
 const Balance = preload("res://scripts/balance.gd")
 const State = preload("res://scripts/state.gd")
-const TEX := {
-	"male": {
-		"front": preload("res://assets/art/boy-front.png"),
-		"side": preload("res://assets/art/boy-side.png"),
-		"back": preload("res://assets/art/boy-back.png")
-	},
-	"female": {
-		"front": preload("res://assets/art/girl-front.png"),
-		"side": preload("res://assets/art/girl-side.png"),
-		"back": preload("res://assets/art/girl-back.png")
-	}
-}
 
 var sim: Node
 var unit_id := ""
@@ -73,6 +61,7 @@ var active := false
 var _font: Font
 
 @onready var sprite: Sprite2D = $Visual/Sprite2D
+@onready var fighter: Node2D = $Visual/Fighter
 @onready var visual: Node2D = $Visual
 @onready var blade: Polygon2D = $Visual/WeaponPivot/Blade
 @onready var anim: AnimationPlayer = $AnimationPlayer
@@ -94,10 +83,7 @@ func _ready() -> void:
 	sensor.monitorable = false
 	sensor.collision_layer = 0
 	sensor.collision_mask = Balance.LAYER_WATER | Balance.LAYER_BRIDGE | Balance.LAYER_ISLAND
-	sprite.centered = true
-	sprite.position = Vector2(0, -0.58)
-	blade.polygon = PackedVector2Array([Vector2(0, -0.04), Vector2(0.62, -0.02), Vector2(0.62, 0.02), Vector2(0, 0.04)])
-	blade.color = Color(0.9, 0.93, 0.96)
+	sprite.visible = false
 	blade.visible = false
 	_font = ThemeDB.fallback_font
 	_build_anims()
@@ -305,15 +291,20 @@ func read_player() -> void:
 	if mx != 0.0 or my != 0.0:
 		wish = Vector2(mx, my).normalized()
 		click_target = null
-	elif click_target != null:
-		var delta: Vector2 = click_target - global_position
-		if delta.length() < 0.35:
-			wish = Vector2.ZERO
-			click_target = null
-		else:
-			wish = delta.normalized()
 	else:
-		wish = Vector2.ZERO
+		var stick := _stick_wish()
+		if stick.length() > 0.18:
+			wish = stick.normalized()
+			click_target = null
+		elif click_target != null:
+			var delta: Vector2 = click_target - global_position
+			if delta.length() < 0.35:
+				wish = Vector2.ZERO
+				click_target = null
+			else:
+				wish = delta.normalized()
+		else:
+			wish = Vector2.ZERO
 	if wish != Vector2.ZERO:
 		facing = wish.angle()
 
@@ -565,13 +556,18 @@ func _follow_clones(dt: float) -> void:
 		c.facing = facing
 		if c.node:
 			c.node.global_position = c.pos
-			var view := _view_for(facing)
-			var spr: Sprite2D = c.node.get_node("Sprite2D")
-			spr.texture = TEX[gender][view["view"]]
-			spr.flip_h = bool(view["flip"])
-			if spr.texture:
-				var s := 1.28 / float(spr.texture.get_height())
-				spr.scale = Vector2(s, s)
+			var rig: Node = c.node.get_node_or_null("Fighter")
+			if rig:
+				rig.set("facing", facing)
+				rig.set("move_blend", move_blend)
+				rig.set("swing", swing_vis)
+				rig.set("attack_wind", attack_wind)
+				rig.set("gender", gender)
+				rig.set("team", team)
+				rig.set("ghost", true)
+				rig.set("lit_sword", fire_sword_t > 0.0)
+				rig.set("dead", false)
+				rig.set("carrying", carrying != null)
 
 
 func _view_for(angle: float) -> Dictionary:
@@ -591,26 +587,24 @@ func _view_for(angle: float) -> Dictionary:
 	return best
 
 
+func _stick_wish() -> Vector2:
+	if sim == null or sim.hud == null or not sim.hud.has_method("stick_wish"):
+		return Vector2.ZERO
+	var value: Vector2 = sim.hud.call("stick_wish")
+	return value
+
+
 func _sync_visual() -> void:
-	if sprite == null:
-		return
-	var view := _view_for(facing)
-	var tex: Texture2D = TEX[gender][view["view"]]
-	sprite.texture = tex
-	sprite.flip_h = bool(view["flip"])
-	if tex:
-		var s := 1.28 / float(tex.get_height())
-		sprite.scale = Vector2(s, s)
-	var tint := Color(1, 0.82, 0.86) if team == 0 else Color(0.8, 0.9, 1)
-	if hit_flash > 0.0:
-		tint = Color(1, 1, 1)
-	if dead:
-		tint.a = 0.35
-	elif invuln > 0.0 and fmod(sim.time * 12.0, 1.0) < 0.35:
-		tint.a = 0.45
-	sprite.modulate = tint
-	blade.visible = (not dead) and (swing_vis > 0.0 or fire_sword_t > 0.0) and weapon == "sword" and carrying == null
-	blade.color = Color(1.0, 0.55, 0.1) if fire_sword_t > 0.0 else Color(0.9, 0.93, 0.96)
+	if sprite:
+		sprite.visible = false
+	if blade:
+		blade.visible = false
+	if fighter and fighter.has_method("sync_from"):
+		fighter.sync_from(self)
+		if invuln > 0.0 and fmod(sim.time * 12.0, 1.0) < 0.35:
+			fighter.modulate.a = 0.45
+		else:
+			fighter.modulate.a = 1.0
 	z_index = int(global_position.y * 10.0)
 	$CollisionShape2D.disabled = dead
 	if anim == null:

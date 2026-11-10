@@ -755,12 +755,13 @@ func spawn_clones(u) -> void:
 	u.clones.clear()
 	for side in [-PI / 4.0, PI / 4.0]:
 		var host := Node2D.new()
-		var spr := Sprite2D.new()
-		spr.name = "Sprite2D"
-		spr.centered = true
-		spr.position = Vector2(0, -0.58)
-		spr.modulate = Color(0.75, 0.95, 1, 0.9)
-		host.add_child(spr)
+		var rig := Node2D.new()
+		rig.set_script(preload("res://scripts/fighter_visual.gd"))
+		rig.name = "Fighter"
+		host.add_child(rig)
+		rig.set("gender", u.gender)
+		rig.set("team", u.team)
+		rig.set("ghost", true)
 		unit_root.add_child(host)
 		var c := State.new()
 		c.id = _clone_seq
@@ -1523,7 +1524,7 @@ func _sync_world() -> void:
 		elif int(k["owner"]) == 1:
 			visual.color = Color(0.32, 0.55, 0.9)
 		else:
-			visual.color = Color(0.72, 0.68, 0.62)
+			visual.color = Color(0.95, 0.9, 0.78)
 	for group in [towers, [outpost]]:
 		for p in group:
 			if p == null:
@@ -1534,7 +1535,7 @@ func _sync_world() -> void:
 			elif int(p["owner"]) == 1:
 				vis.color = Color(0.32, 0.55, 0.9)
 			else:
-				vis.color = Color(0.62, 0.58, 0.52)
+				vis.color = Color(0.96, 0.86, 0.55) if str(p.get("name", "")) == "Middle Outpost" else Color(0.95, 0.9, 0.78)
 
 
 func _separate(u) -> void:

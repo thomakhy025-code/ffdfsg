@@ -741,6 +741,13 @@ func _poll_wish(player) -> Vector2:
 	if mx != 0.0 or my != 0.0:
 		player.click_target = null
 		return Vector2(mx, my).normalized()
+	var stick := Vector2.ZERO
+	if player.sim != null and player.sim.hud != null and player.sim.hud.has_method("stick_wish"):
+		var raw: Vector2 = player.sim.hud.call("stick_wish")
+		stick = raw
+	if stick.length() > 0.18:
+		player.click_target = null
+		return stick.normalized()
 	if player.click_target != null:
 		var delta: Vector2 = player.click_target - player.global_position
 		if delta.length() < 0.35:

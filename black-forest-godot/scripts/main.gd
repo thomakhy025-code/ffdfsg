@@ -290,8 +290,8 @@ func _build_title() -> void:
 	genders.add_theme_constant_override("separation", 16)
 	genders.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.add_child(genders)
-	male_btn = _gender_button("Male", "res://assets/art/boy-sheet.png")
-	female_btn = _gender_button("Female", "res://assets/art/girl-sheet.png")
+	male_btn = _gender_button("Male", "res://assets/art/fighters/fighter-male.png")
+	female_btn = _gender_button("Female", "res://assets/art/fighters/fighter-female.png")
 	male_btn.pressed.connect(_mark_gender.bind("male"))
 	female_btn.pressed.connect(_mark_gender.bind("female"))
 	genders.add_child(male_btn)

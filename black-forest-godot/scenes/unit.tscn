@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/unit.gd" id="1_unit"]
+[ext_resource type="Script" path="res://scripts/fighter_visual.gd" id="2_fighter"]
 
 [node name="Unit" type="CharacterBody2D"]
 script = ExtResource("1_unit")
@@ -10,10 +11,15 @@ script = ExtResource("1_unit")
 [node name="Visual" type="Node2D" parent="."]
 
 [node name="Sprite2D" type="Sprite2D" parent="Visual"]
+visible = false
+
+[node name="Fighter" type="Node2D" parent="Visual"]
+script = ExtResource("2_fighter")
 
 [node name="WeaponPivot" type="Node2D" parent="Visual"]
 
 [node name="Blade" type="Polygon2D" parent="Visual/WeaponPivot"]
+visible = false
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 

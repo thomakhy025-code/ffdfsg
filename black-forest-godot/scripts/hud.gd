@@ -17,9 +17,13 @@ var buff_label: Label
 var carry_label: Label
 var kill_label: Label
 var skill_row: HBoxContainer
+var actions: HBoxContainer
 var attack_btn: Button
 var throw_btn: Button
 var guard_btn: Button
+var touch: Control
+var bottom_bar: Control
+var _status_lifted := false
 var help_layer: Control
 var result_layer: Control
 var result_title: Label
@@ -32,6 +36,50 @@ var _skill_buttons := {}
 func _ready() -> void:
 	layer = 10
 	_build()
+	_wire_touch()
+
+
+func _place_status(touch_on: bool) -> void:
+	if bottom_bar == null or _status_lifted == touch_on:
+		if actions:
+			actions.visible = not touch_on
+		return
+	_status_lifted = touch_on
+	if actions:
+		actions.visible = not touch_on
+	if touch_on:
+		bottom_bar.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		bottom_bar.offset_left = 12.0
+		bottom_bar.offset_top = 96.0
+		bottom_bar.offset_right = 520.0
+		bottom_bar.offset_bottom = 176.0
+	else:
+		bottom_bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+		bottom_bar.offset_left = 0.0
+		bottom_bar.offset_top = -118.0
+		bottom_bar.offset_right = 0.0
+		bottom_bar.offset_bottom = 0.0
+
+
+func stick_wish() -> Vector2:
+	if touch == null or not touch.visible:
+		return Vector2.ZERO
+	var value: Vector2 = touch.get("wish")
+	return value
+
+
+func _wire_touch() -> void:
+	touch = get_node_or_null("TouchControls")
+	if touch == null:
+		return
+	if not touch.is_connected("attack_pressed", _attack):
+		touch.connect("attack_pressed", _attack)
+	if not touch.is_connected("throw_pressed", _throw):
+		touch.connect("throw_pressed", _throw)
+	if not touch.is_connected("guard_pressed", _guard):
+		touch.connect("guard_pressed", _guard)
+	if not touch.is_connected("skill_pressed", _cast):
+		touch.connect("skill_pressed", _cast)
 
 
 func bind_match(match_node: Node) -> void:
@@ -92,9 +140,16 @@ func _process(_delta: float) -> void:
 		carry_label.text = "Carrying — half speed, no attacks. Throw or F. Defense halves damage for 5 MP/s."
 	else:
 		carry_label.text = ""
-	throw_btn.visible = player.carrying != null
-	guard_btn.visible = player.carrying != null
-	guard_btn.text = "Defense ON" if player.guard else "Defense"
+	var touch_on := touch != null and touch.visible
+	_place_status(touch_on)
+	if touch_on:
+		touch.call("set_carrying", player.carrying != null)
+		touch.call("set_guard_on", player.guard)
+		touch.call("set_cooldowns", player)
+	else:
+		throw_btn.visible = player.carrying != null
+		guard_btn.visible = player.carrying != null
+		guard_btn.text = "Defense ON" if player.guard else "Defense"
 	if sim.kill_call == null:
 		kill_label.visible = false
 	else:
@@ -177,6 +232,12 @@ func _rebuild_skills() -> void:
 		btn.pressed.connect(_cast.bind(id))
 		skill_row.add_child(btn)
 		_skill_buttons[id] = btn
+	if touch and touch.has_method("set_skills"):
+		var ids: Array = []
+		for skill_id in Balance.SKILL_ORDER:
+			if sim.player.skills.get(skill_id, false):
+				ids.append(skill_id)
+		touch.call("set_skills", ids)
 
 
 func _cast(id: String) -> void:
@@ -313,6 +374,7 @@ func _build() -> void:
 	btns.add_child(restart_btn)
 
 	var bottom := MarginContainer.new()
+	bottom_bar = bottom
 	bottom.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	bottom.offset_top = -118
 	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -332,7 +394,7 @@ func _build() -> void:
 	info.add_child(buff_label)
 	carry_label = _label("", 14)
 	bot.add_child(carry_label)
-	var actions := HBoxContainer.new()
+	actions = HBoxContainer.new()
 	actions.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	actions.add_theme_constant_override("separation", 8)
 	bot.add_child(actions)
@@ -483,7 +545,7 @@ func _sheet(parent: Control) -> VBoxContainer:
 func _help_copy() -> String:
 	return """[b]You are Crimson.[/b] Steal the Azure diamond and hold it in your vault for [b]10 seconds[/b]. If a carrier dies, the diamond stays where they fell. Only Crimson can return the Crimson diamond: carry it into your vault and it snaps home at once. Azure wins the same way with yours.
 
-[b]WASD[/b] move. Right-click walks. Swings follow the direction you are facing. [b]J[/b], left-click, or Attack.
+[b]WASD[/b] move. Right-click walks. On the web build and on a touch screen, drag the stick in from the lower-left corner. Keys win while they are held. Swings follow the direction you are facing. [b]J[/b], left-click, or the large Attack button. The three equipped skills sit in an arc above Attack. Throw and Defense appear beside those skills only while you carry a diamond.
 Equip exactly three skills. Only those three buttons appear. [b]1[/b] Fireball [b]2[/b] Ice [b]3[/b] Fire Sword [b]4[/b] Lightning [b]5[/b] Mega Explosion [b]6[/b] Lightsaber Beam.
 Fireball, a diamond throw, and Lightning all follow your facing. A throw lands [b]1 m[/b] ahead. Lightning dashes [b]4 m[/b]. Anyone hit cannot move for 1 second and can still cast Fireball. For 5 seconds their casts take twice as long.
 Mega channels 2.5s. You cannot move, attack, or use other skills. Blast 7 m ahead, radius 5 m, [b]200[/b] damage, teammates included, 70 MP.
