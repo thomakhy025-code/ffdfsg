@@ -66,6 +66,12 @@ func _draw() -> void:
 	var scarf := _ink(Color(0.82, 0.16, 0.24) if team == 0 else Color(0.2, 0.5, 0.9))
 	var outline := _ink(Color(0.09, 0.06, 0.12))
 	_oval(Vector2(0.0, 0.08), 0.38, 0.12, _ink(Color(0.05, 0.1, 0.05, 0.38)))
+	if swing > 0.0 or attack_wind > 0.0:
+		_oval(Vector2(0.15, -0.35), 0.78, 0.58, _ink(Color(1.0, 0.82, 0.28, 0.38)))
+	elif casting:
+		_oval(Vector2(0.0, -0.42), 0.7, 0.55, _ink(Color(1.0, 0.5, 0.16, 0.42)))
+	elif channeling:
+		_oval(Vector2(0.0, -0.42), 0.86, 0.64, _ink(Color(1.0, 0.28, 0.22, 0.4)))
 	var stride := sin(gait) * 0.62 * clampf(move_blend, 0.0, 1.0)
 	if dead:
 		stride = 0.85
@@ -117,14 +123,14 @@ func _arm_angle() -> float:
 		return 0.2
 	if attack_wind > 0.0:
 		var wind := clampf(1.0 - attack_wind / 0.28, 0.0, 1.0)
-		return lerpf(0.4, -1.2, wind)
+		return lerpf(0.55, -1.7, wind)
 	if swing > 0.0:
 		var slash := 1.0 - clampf(swing / 0.26, 0.0, 1.0)
-		return lerpf(-1.2, 1.5, slash)
+		return lerpf(-1.7, 1.9, slash)
 	if channeling:
-		return -0.2 + sin(gait) * 0.08
+		return -0.35 + sin(gait) * 0.2
 	if casting:
-		return lerpf(0.15, -1.35, 0.5 + 0.5 * sin(gait * 3.0))
+		return lerpf(0.2, -1.7, 0.5 + 0.5 * sin(gait * 3.0))
 	return 0.5 + sin(gait) * 0.42 * move_blend
 
 
@@ -161,7 +167,7 @@ func _sword_arm(outline: Color, skin: Color) -> void:
 		return
 	if bare:
 		return
-	var tip := hand + dir * (0.62 if not lit_sword else 0.7)
+	var tip := hand + dir * (0.92 if not lit_sword else 1.05)
 	var n := Vector2(-dir.y, dir.x)
 	var steel := _ink(Color(1.0, 0.62, 0.16) if lit_sword else Color(0.9, 0.93, 0.97))
 	var edge := _ink(Color(1.0, 0.92, 0.45) if lit_sword else Color(1.0, 1.0, 1.0))

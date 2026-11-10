@@ -54,6 +54,7 @@ var action_seq := {}
 var input_peers := {}
 var match_node: Node = null
 var pending_profile: Dictionary = {}
+var _join_timer := 0.0
 var held_snapshot := PackedByteArray()
 var has_held := false
 
@@ -100,6 +101,11 @@ func _physics_process(delta: float) -> void:
 	if role == "client":
 		_advance_clock(delta)
 		_poll_latency(delta)
+		if match_node == null and not _closing:
+			_join_timer += delta
+			if _join_timer >= 0.6:
+				_join_timer = 0.0
+				_send_join()
 	if role == "offline":
 		_smoke_watch()
 		return
@@ -371,20 +377,36 @@ func publish_result(result: Dictionary) -> void:
 
 @rpc("any_peer", "reliable")
 func rpc_join(profile: Dictionary) -> void:
-	if role != "server" or match_node != null:
+	if role != "server":
+		return
+	if not smoke:
+		_reclaim_abandoned_match()
+	if match_node != null:
 		return
 	var id := multiplayer.get_remote_sender_id()
+	var already := false
 	for seat in seats:
 		if int(seat["peer_id"]) == id:
+			already = true
+			break
+	if not already:
+		if seats.size() >= MAX_CLIENTS:
 			return
-	if seats.size() >= MAX_CLIENTS:
-		return
-	var clean := _clean_profile(profile)
-	seats.append({"peer_id": id, "profile": clean})
-	_status("Players %d/2." % seats.size())
-	print("NET join ", id, " ", str(clean["name"]))
-	if seats.size() == MAX_CLIENTS:
+		var clean := _clean_profile(profile)
+		seats.append({"peer_id": id, "profile": clean})
+		_status("Players %d/2." % seats.size())
+		print("NET join ", id, " ", str(clean["name"]))
+	if seats.size() == MAX_CLIENTS and match_node == null:
 		_begin_server_match()
+	if _can_rpc() and multiplayer.get_peers().has(id):
+		rpc_lobby.rpc_id(id, seats.size())
+
+
+@rpc("authority", "reliable")
+func rpc_lobby(count: int) -> void:
+	if role != "client" or not _from_server() or match_node != null:
+		return
+	_status("Connected. Waiting for the other player. Players %d/2." % count)
 
 
 @rpc("authority", "reliable")
@@ -833,28 +855,92 @@ func _on_peer_disconnected(id: int) -> void:
 	print("NET peer left ", id)
 	if role != "server" or _closing:
 		return
+	var was_seated := false
 	var next: Array = []
 	for seat in seats:
-		if int(seat["peer_id"]) != id:
+		if int(seat["peer_id"]) == id:
+			was_seated = true
+		else:
 			next.append(seat)
 	seats = next
 	queues.erase(id)
 	last_wish.erase(id)
 	last_applied.erase(id)
 	last_input_msec.erase(id)
-	if match_node and is_instance_valid(match_node) and match_node.phase == "play" and not smoke:
+	var playing := false
+	if match_node != null and is_instance_valid(match_node) and str(match_node.get("phase")) == "play":
+		playing = true
+	if was_seated and playing and not smoke:
 		match_node.end_match("left", -1)
+	if was_seated and not smoke:
+		_open_lobby_again()
+		if playing:
+			_kick_remaining_peers.call_deferred()
 	elif match_node == null:
 		_status("Players %d/2." % seats.size())
+
+
+func _send_join() -> void:
+	if role != "client" or pending_profile.is_empty() or not _can_rpc():
+		return
+	rpc_join.rpc_id(1, pending_profile)
+
+
+func _reclaim_abandoned_match() -> void:
+	if match_node == null or not is_instance_valid(match_node):
+		match_node = null
+		return
+	if str(match_node.get("phase")) == "play" and _live_seats() >= MAX_CLIENTS:
+		return
+	print("NET reclaim abandoned match")
+	_open_lobby_again()
+
+
+func _live_seats() -> int:
+	var peers: PackedInt32Array = multiplayer.get_peers()
+	var live := 0
+	for seat in seats:
+		if peers.has(int(seat["peer_id"])):
+			live += 1
+	return live
+
+
+func _open_lobby_again() -> void:
+	if match_node and is_instance_valid(match_node):
+		match_node.queue_free()
+	match_node = null
+	queues.clear()
+	last_wish.clear()
+	last_applied.clear()
+	last_input_msec.clear()
+	action_seq.clear()
+	input_peers.clear()
+	var peers: PackedInt32Array = multiplayer.get_peers()
+	var kept: Array = []
+	for seat in seats:
+		if peers.has(int(seat["peer_id"])):
+			kept.append(seat)
+	seats = kept
+	var kind := "WebSocket" if use_websocket else "UDP"
+	_status("Dedicated server listening for %s on port %d. Players %d/2." % [kind, port, seats.size()])
+
+
+func _kick_remaining_peers() -> void:
+	if peer == null or smoke:
+		return
+	var ids: PackedInt32Array = multiplayer.get_peers()
+	for id in ids:
+		peer.disconnect_peer(int(id))
 
 
 func _on_connected() -> void:
 	if role != "client":
 		return
 	_status("Connected. Waiting for the other player.")
+	_join_timer = 0.0
 	print("NET connected id ", multiplayer.get_unique_id())
 	rpc_fetch_server_time.rpc_id(1, Time.get_ticks_msec())
-	rpc_join.rpc_id(1, pending_profile)
+	_send_join()
 
 
 func _on_connection_failed() -> void:

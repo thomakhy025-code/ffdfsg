@@ -219,42 +219,54 @@ func _layout() -> void:
 	if vp.x < 8.0:
 		vp = get_viewport_rect().size
 	var narrow := vp.x < 700.0
-	var stick_s := 96.0 if narrow else 108.0
-	var left := 36.0 if narrow else 34.0
-	var bottom := 48.0 if narrow else 42.0
-	var knob_s := 44.0 if narrow else 48.0
+	var stick_s := 120.0 if narrow else 132.0
+	var left := 44.0 if narrow else 48.0
+	var bottom := 56.0 if narrow else 64.0
+	var knob_s := 52.0 if narrow else 58.0
+	_pin_top_left(_stick)
 	_stick.position = Vector2(left, vp.y - bottom - stick_s)
 	_stick.size = Vector2(stick_s, stick_s)
+	_pin_top_left(_knob)
 	_knob.size = Vector2(knob_s, knob_s)
 	_knob.custom_minimum_size = _knob.size
 	if not _dragging:
 		_center_knob()
+	_pin_top_left(_ring)
 	_ring.size = _stick.size * 0.34
 	_ring.position = (_stick.size - _ring.size) * 0.5
-	var cw := 204.0 if narrow else 220.0
-	var ch := 164.0 if narrow else 176.0
-	var right := 22.0 if narrow else 20.0
-	var cbottom := 28.0 if narrow else 30.0
+	var cw := 236.0 if narrow else 268.0
+	var ch := 196.0 if narrow else 220.0
+	var right := 28.0 if narrow else 32.0
+	var cbottom := 40.0 if narrow else 48.0
+	_pin_top_left(_cluster)
 	_cluster.position = Vector2(vp.x - right - cw, vp.y - cbottom - ch)
 	_cluster.size = Vector2(cw, ch)
+	_pin_top_left(_slots)
 	_slots.position = Vector2.ZERO
 	_slots.size = _cluster.size
-	var aw := 70.0 if narrow else 74.0
-	_place_round(attack_btn, cw - aw, ch - ch * 0.10 - aw, aw)
-	var tw := 62.0 if narrow else 68.0
-	var guard_right := 70.0 if narrow else 78.0
-	_place_round(throw_btn, cw - tw, -10.0 - tw, tw)
-	_place_round(guard_btn, cw - guard_right - tw, -10.0 - tw, tw)
-	var sw := 52.0 if narrow else 56.0
+	var aw := 84.0 if narrow else 96.0
+	_place_round(attack_btn, cw - aw, ch - ch * 0.12 - aw, aw)
+	var tw := 72.0 if narrow else 80.0
+	var guard_right := 84.0 if narrow else 96.0
+	_place_round(throw_btn, cw - tw, -14.0 - tw, tw)
+	_place_round(guard_btn, cw - guard_right - tw, -14.0 - tw, tw)
+	var sw := 64.0 if narrow else 70.0
 	for id in slot_buttons.keys():
 		var btn: Button = slot_buttons[id]
 		var anchor: Vector2 = SKILL_ANCHOR[id]
 		_place_round(btn, cw - cw * anchor.x - sw, ch - ch * anchor.y - sw, sw)
 
 
+func _pin_top_left(node: Control) -> void:
+	if node == null:
+		return
+	node.set_anchors_preset(Control.PRESET_TOP_LEFT)
+
+
 func _place_round(btn: Button, x: float, y: float, diameter: float) -> void:
 	if btn == null:
 		return
+	_pin_top_left(btn)
 	btn.position = Vector2(x, y)
 	btn.size = Vector2(diameter, diameter)
 	btn.custom_minimum_size = btn.size

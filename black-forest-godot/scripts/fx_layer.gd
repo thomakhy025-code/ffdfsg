@@ -28,9 +28,9 @@ func _draw() -> void:
 			var tail := Vector2(s.vx, s.vy)
 			if tail.length_squared() > 0.01:
 				tail = tail.normalized()
-			draw_circle(s.pos - tail * 0.28, 0.22, Color(1.0, 0.35, 0.05, 0.35))
-			draw_circle(s.pos, 0.26, Color(1.0, 0.45, 0.08, 0.55))
-			draw_circle(s.pos, 0.14, Color(1.0, 0.95, 0.7, 0.95))
+			draw_circle(s.pos - tail * 0.45, 0.34, Color(1.0, 0.28, 0.02, 0.35))
+			draw_circle(s.pos, 0.42, Color(1.0, 0.42, 0.06, 0.55))
+			draw_circle(s.pos, 0.2, Color(1.0, 0.97, 0.75, 0.95))
 		elif s.kind == "gem":
 			var gem: Vector2 = s.pos
 			draw_colored_polygon(PackedVector2Array([
@@ -46,16 +46,16 @@ func _draw() -> void:
 			var pulse := 0.92 + 0.08 * sin(float(sim.time) * 10.0)
 			draw_circle(u.channel.pos, float(u.channel.r) * pulse, Color(1.0, 0.22, 0.18, 0.2))
 			draw_circle(u.channel.pos, float(u.channel.r) * 0.45, Color(1.0, 0.55, 0.2, 0.18))
-			draw_arc(u.channel.pos, float(u.channel.r), 0.0, TAU, 48, Color(1.0, 0.25, 0.15, 0.95), 0.12, true)
+			draw_arc(u.channel.pos, float(u.channel.r), 0.0, TAU, 48, Color(1.0, 0.25, 0.15, 0.95), 0.2, true)
 			draw_arc(u.channel.pos, float(u.channel.r) * 0.72, 0.0, TAU, 32, Color(1.0, 0.85, 0.45, 0.7), 0.05, true)
 		elif u.channel.kind == "saber":
 			var poly := _saber_poly(u.channel)
 			draw_colored_polygon(poly, Color(1.0, 0.92, 0.4, 0.28))
 			var loop := PackedVector2Array([poly[0], poly[1], poly[2], poly[3], poly[0]])
-			draw_polyline(loop, Color(1.0, 0.86, 0.15, 0.95), 0.1, true)
+			draw_polyline(loop, Color(1.0, 0.86, 0.15, 0.95), 0.16, true)
 			var mid_a := (poly[0] + poly[3]) * 0.5
 			var mid_b := (poly[1] + poly[2]) * 0.5
-			draw_line(mid_a, mid_b, Color(1.0, 1.0, 0.85, 0.9), 0.08, true)
+			draw_line(mid_a, mid_b, Color(1.0, 1.0, 0.85, 0.95), 0.14, true)
 	for fx in sim.mega_fx:
 		var k := 1.0 - float(fx.t) / float(fx.dur)
 		draw_circle(fx.pos, float(fx.r) * (0.15 + 0.9 * k), Color(1.0, 0.4, 0.15, 0.34 * (1.0 - k)))

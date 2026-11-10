@@ -632,7 +632,11 @@ func _draw() -> void:
 	if not dead:
 		draw_arc(Vector2.ZERO, radius, 0.0, TAU, 28, ring, 0.055, true)
 	if swing_vis > 0.0:
-		draw_arc(Vector2.ZERO, swing_range + radius, facing - swing_arc * 0.5, facing + swing_arc * 0.5, 10, Color(1, 0.75, 0.35, 0.85), 0.07, true)
+		var arc_col := Color(1.0, 0.45, 0.1, 0.95) if fire_sword_t > 0.0 else Color(1.0, 0.92, 0.55, 0.95)
+		draw_arc(Vector2.ZERO, swing_range + radius + 0.08, facing - swing_arc * 0.5, facing + swing_arc * 0.5, 18, arc_col, 0.16, true)
+		draw_arc(Vector2.ZERO, swing_range + radius, facing - swing_arc * 0.5, facing + swing_arc * 0.5, 14, Color(1, 1, 1, 0.9), 0.05, true)
+	elif cast != null:
+		draw_arc(Vector2.ZERO, radius + 0.28, 0.0, TAU, 24, Color(1.0, 0.62, 0.2, 0.9), 0.08, true)
 	if not dead and _font != null:
 		var w := 0.9
 		var ratio := clampf(hp / max_hp, 0.0, 1.0)
