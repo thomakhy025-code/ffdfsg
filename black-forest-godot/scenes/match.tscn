@@ -1,0 +1,24 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/match.gd" id="1_match"]
+[ext_resource type="Script" path="res://scripts/fx_layer.gd" id="2_fx"]
+[ext_resource type="Script" path="res://scripts/hud.gd" id="3_hud"]
+[ext_resource type="PackedScene" path="res://scenes/unit.tscn" id="4_unit"]
+
+[node name="Match" type="Node2D"]
+script = ExtResource("1_match")
+unit_scene = ExtResource("4_unit")
+
+[node name="World" type="Node2D" parent="."]
+
+[node name="Units" type="Node2D" parent="."]
+
+[node name="Fx" type="Node2D" parent="."]
+script = ExtResource("2_fx")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(12, 25)
+zoom = Vector2(32, 32)
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("3_hud")

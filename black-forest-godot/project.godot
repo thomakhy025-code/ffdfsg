@@ -1,0 +1,49 @@
+; Engine configuration file.
+; Black Forest — Capture the Diamond. Godot 4 port of the browser match.
+
+config_version=5
+
+[application]
+
+config/name="Black Forest"
+config/description="Capture the Diamond. A Godot 4 port of the Black Forest 5v5 match."
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[autoload]
+
+Profile="*res://scripts/profile.gd"
+Sfx="*res://scripts/sfx.gd"
+Net="*res://scripts/net.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=1
+
+[layer_names]
+
+2d_physics/layer_1="walls"
+2d_physics/layer_2="rocks"
+2d_physics/layer_3="crimson_doors"
+2d_physics/layer_4="azure_doors"
+2d_physics/layer_5="units"
+2d_physics/layer_6="water"
+2d_physics/layer_7="bridges"
+2d_physics/layer_8="islands"
+
+[physics]
+
+2d/default_gravity=0.0
+2d/default_gravity_vector=Vector2(0, 0)
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/canvas_textures/default_texture_filter=1
+environment/defaults/default_clear_color=Color(0.11, 0.32, 0.16, 1)
