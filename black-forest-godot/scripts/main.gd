@@ -238,9 +238,13 @@ func _open_online() -> void:
 
 func _join_online() -> void:
 	var addr := address_edit.text.strip_edges()
+	var on_web := OS.has_feature("web")
 	if addr == "":
-		addr = "127.0.0.1"
-	var prt := int(port_edit.text) if port_edit.text.is_valid_int() else 7777
+		addr = str(Net.address) if on_web else "127.0.0.1"
+	if on_web and (addr == "" or addr == "127.0.0.1" or addr == "localhost" or addr.begins_with("pending.")):
+		online_status.text = "This website joins the public WebSocket server, not this computer."
+		return
+	var prt := int(port_edit.text) if port_edit.text.is_valid_int() else (int(Net.port) if on_web else 7777)
 	if Profile.equipped_ids().size() != 3:
 		Profile.prepare_loadout()
 	var data: Dictionary = Profile.snapshot()
@@ -421,17 +425,21 @@ func _build_online() -> void:
 	online = _screen()
 	var col := _center_column(online)
 	col.add_child(_title_label("Play online", 28))
-	var hint := _title_label("Join a dedicated server. The first player is Crimson, the second is Azure, and bots fill the other eight seats. The server decides hits, diamonds, and the win. Your client predicts your own movement. Start the server with --headless -- --server. Default port is UDP 7777. Versus Robots does not use this server.", 15)
+	var on_web := OS.has_feature("web")
+	var hint_text := "Join the public match server over WebSocket. The first player is Crimson, the second is Azure, and bots fill the other eight seats. The server decides hits, diamonds, and the win. Your client predicts your own movement. Versus Robots does not use this server."
+	if not on_web:
+		hint_text = "Join a dedicated server. The first player is Crimson, the second is Azure, and bots fill the other eight seats. The server decides hits, diamonds, and the win. Your client predicts your own movement. A desktop server listens on UDP 7777. The website uses WebSocket. Versus Robots does not use this server."
+	var hint := _title_label(hint_text, 15)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(640, 0)
 	col.add_child(hint)
 	address_edit = LineEdit.new()
-	address_edit.text = "127.0.0.1"
+	address_edit.text = Net.address if on_web else "127.0.0.1"
 	address_edit.placeholder_text = "Server address"
 	address_edit.custom_minimum_size = Vector2(320, 36)
 	col.add_child(address_edit)
 	port_edit = LineEdit.new()
-	port_edit.text = "7777"
+	port_edit.text = str(Net.port) if on_web else "7777"
 	port_edit.placeholder_text = "Port"
 	port_edit.custom_minimum_size = Vector2(160, 36)
 	col.add_child(port_edit)

@@ -1,11 +1,14 @@
 extends Node
 ## Dedicated server for the 5v5 match, using Godot's high-level multiplayer API.
 ##
-## Start the server (UDP 7777):
+## Desktop server (UDP 7777):
 ##   godot --headless --path <project> -- --server
-## Start a client:
+## Browser server (WebSocket, then expose it with a TLS tunnel):
+##   godot --headless --path <project> -- --server --websocket
+## Desktop client:
 ##   godot --path <project> -- --client --address 127.0.0.1 --port 7777
-## The in-game Play online screen joins that server. Versus Robots never opens a peer.
+## The website build always uses WebSocket and the host in web_endpoint.gd.
+## Versus Robots never opens a peer.
 ##
 ## The listen process runs the match. Each client sends its own input every tick and
 ## does not wait for the other team. The server simulates hits, diamonds, and the win.
@@ -14,6 +17,7 @@ extends Node
 
 const Balance = preload("res://scripts/balance.gd")
 const MatchScene = preload("res://scenes/match.tscn")
+const WebEndpoint = preload("res://scripts/web_endpoint.gd")
 
 const DEFAULT_PORT := 7777
 const MAX_CLIENTS := 2
@@ -33,7 +37,8 @@ const BIT_GUARD := 32
 signal status_changed
 
 var role := "offline"
-var peer: ENetMultiplayerPeer
+var peer: MultiplayerPeer
+var use_websocket := false
 var status := "Versus Robots stays on this machine. Online play joins a dedicated server on UDP 7777."
 var address := "127.0.0.1"
 var port := DEFAULT_PORT
@@ -80,6 +85,14 @@ func _ready() -> void:
 	multiplayer.connected_to_server.connect(_on_connected)
 	multiplayer.connection_failed.connect(_on_connection_failed)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
+	if OS.has_feature("web"):
+		use_websocket = true
+		address = str(WebEndpoint.HOST).strip_edges()
+		port = int(WebEndpoint.PORT)
+		if address == "" or address.begins_with("pending."):
+			_status("Play online needs the public WebSocket server. Versus Robots stays on this machine.")
+		else:
+			_status("Play online uses WebSocket at %s:%d. Versus Robots stays on this machine." % [address, port])
 	_parse_args()
 
 
@@ -124,6 +137,8 @@ func _parse_args() -> void:
 		elif arg == "--name" and i + 1 < args.size():
 			i += 1
 			smoke_name = str(args[i])
+		elif arg == "--websocket":
+			use_websocket = true
 		i += 1
 	if role == "server":
 		start_server(port)
@@ -136,44 +151,124 @@ func start_server(prt: int) -> void:
 	_shutdown_peer()
 	role = "server"
 	port = prt
-	peer = ENetMultiplayerPeer.new()
-	var err := peer.create_server(prt, MAX_CLIENTS)
+	var err := _open_server(prt)
 	if err != OK:
 		peer = null
 		role = "offline"
-		_status("Could not listen on UDP %d (%s)." % [prt, error_string(err)])
+		var kind := "WebSocket" if use_websocket else "UDP"
+		_status("Could not listen for %s on port %d (%s)." % [kind, prt, error_string(err)])
 		if smoke:
 			_fail("create_server %s" % error_string(err))
 		return
-	peer.host.compress(ENetConnection.COMPRESS_RANGE_CODER)
 	multiplayer.multiplayer_peer = peer
-	_status("Dedicated server listening on UDP %d. Waiting for 2 players." % prt)
-	print("NET listening udp ", prt)
+	if use_websocket:
+		_status("Dedicated server listening for WebSocket on port %d. Waiting for 2 players." % prt)
+		print("NET listening websocket ", prt)
+	else:
+		_status("Dedicated server listening on UDP %d. Waiting for 2 players." % prt)
+		print("NET listening udp ", prt)
 
 
 func start_client(addr: String, prt: int, profile: Dictionary) -> void:
 	_shutdown_peer()
 	role = "client"
-	address = addr
+	address = addr.strip_edges()
 	port = prt
 	pending_profile = profile
 	local_seq = 0
 	history.clear()
 	world_states.clear()
 	_reset_clock()
-	peer = ENetMultiplayerPeer.new()
-	var err := peer.create_client(addr, prt)
+	var websocket := _client_uses_websocket(address)
+	var err := FAILED
+	var target := "%s:%d" % [address, prt]
+	if websocket:
+		use_websocket = true
+		target = _websocket_url(address, prt)
+		err = _open_websocket_client(target)
+	else:
+		err = _open_enet_client(address, prt)
 	if err != OK:
 		peer = null
 		role = "offline"
-		_status("Could not reach %s:%d (%s)." % [addr, prt, error_string(err)])
+		_status("Could not reach the server at %s (%s)." % [target, error_string(err)])
 		if smoke:
 			_fail("create_client %s" % error_string(err))
 		return
-	peer.host.compress(ENetConnection.COMPRESS_RANGE_CODER)
 	multiplayer.multiplayer_peer = peer
-	_status("Connecting to %s:%d." % [addr, prt])
-	print("NET connecting ", addr, " ", prt)
+	_status("Connecting to %s." % target)
+	print("NET connecting ", target)
+
+
+func _open_server(prt: int) -> Error:
+	if use_websocket:
+		var ws := WebSocketMultiplayerPeer.new()
+		var err := ws.create_server(prt, "*")
+		if err != OK:
+			return err
+		peer = ws
+		return OK
+	if not ClassDB.class_exists("ENetMultiplayerPeer"):
+		return ERR_UNAVAILABLE
+	var enet: MultiplayerPeer = ClassDB.instantiate("ENetMultiplayerPeer") as MultiplayerPeer
+	if enet == null:
+		return ERR_UNAVAILABLE
+	var err_code := int(enet.call("create_server", prt, MAX_CLIENTS))
+	if err_code != OK:
+		return err_code as Error
+	var host: Object = enet.get("host")
+	if host != null:
+		host.call("compress", ClassDB.class_get_integer_constant("ENetConnection", "COMPRESS_RANGE_CODER"))
+	peer = enet
+	return OK
+
+
+func _open_enet_client(addr: String, prt: int) -> Error:
+	if not ClassDB.class_exists("ENetMultiplayerPeer"):
+		return ERR_UNAVAILABLE
+	var enet: MultiplayerPeer = ClassDB.instantiate("ENetMultiplayerPeer") as MultiplayerPeer
+	if enet == null:
+		return ERR_UNAVAILABLE
+	var err_code := int(enet.call("create_client", addr, prt))
+	if err_code != OK:
+		return err_code as Error
+	var host: Object = enet.get("host")
+	if host != null:
+		host.call("compress", ClassDB.class_get_integer_constant("ENetConnection", "COMPRESS_RANGE_CODER"))
+	peer = enet
+	return OK
+
+
+func _open_websocket_client(url: String) -> Error:
+	var ws := WebSocketMultiplayerPeer.new()
+	var err := ERR_CANT_CONNECT
+	if url.begins_with("wss://") and not OS.has_feature("web"):
+		err = ws.create_client(url, TLSOptions.client())
+	else:
+		err = ws.create_client(url)
+	if err != OK:
+		return err
+	peer = ws
+	return OK
+
+
+func _client_uses_websocket(addr: String) -> bool:
+	if OS.has_feature("web") or use_websocket:
+		return true
+	return addr.begins_with("ws://") or addr.begins_with("wss://")
+
+
+func _websocket_url(addr: String, prt: int) -> String:
+	var a := addr.strip_edges()
+	if a.begins_with("ws://") or a.begins_with("wss://"):
+		return a
+	var secure := OS.has_feature("web") or prt == 443
+	var scheme := "wss" if secure else "ws"
+	if secure and (prt == 443 or prt == 0):
+		return "%s://%s" % [scheme, a]
+	if not secure and (prt == 80 or prt == 0):
+		return "%s://%s" % [scheme, a]
+	return "%s://%s:%d" % [scheme, a, prt]
 
 
 func leave(back_to_armory: bool = true) -> void:
@@ -718,6 +813,11 @@ func _host_match() -> Node:
 
 func _on_peer_connected(id: int) -> void:
 	print("NET peer ", id)
+	if role == "server" and use_websocket and multiplayer.get_peers().size() > MAX_CLIENTS:
+		if peer != null:
+			peer.disconnect_peer(id)
+		print("NET refused extra peer ", id)
+		return
 	if role == "server":
 		_status("Peer %d connected. Players %d/2." % [id, seats.size()])
 
@@ -751,7 +851,8 @@ func _on_connected() -> void:
 
 
 func _on_connection_failed() -> void:
-	_status("Could not reach the server at %s:%d." % [address, port])
+	var target := _websocket_url(address, port) if use_websocket else "%s:%d" % [address, port]
+	_status("Could not reach the server at %s." % target)
 	print("NET connection failed")
 	if smoke and role == "client":
 		_fail("connection failed")
